@@ -20,12 +20,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pages = const [
     _OnboardingPageData(
       icon: Icons.auto_awesome,
-      iconColor: AppColors.goldLight,
+      iconColor: AppColors.purpleLight,
       title: 'Ancient Vedic Wisdom',
       subtitle: '5,000 years of cosmic knowledge\nat your fingertips',
       description:
           'Based on Brihat Parashara Hora Shastra,\nPhaladeepika & Brighu Sanhita',
-      gradient: [Color(0xFF2D1B69), Color(0xFF0A0A0F)],
+      gradient: [Color(0xFF7C1C56), Color(0xFF101217)],
     ),
     _OnboardingPageData(
       icon: Icons.psychology_rounded,
@@ -34,7 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       subtitle: 'Personalized predictions\njust for you',
       description:
           'Get career, love, health & finance guidance\nbased on your exact birth chart',
-      gradient: [Color(0xFF1B3A69), Color(0xFF0A0A0F)],
+      gradient: [Color(0xFF5C1040), Color(0xFF101217)],
     ),
     _OnboardingPageData(
       icon: Icons.back_hand_rounded,
@@ -43,7 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       subtitle: 'Scan your palm with AI\nSamudrik Shastra analysis',
       description:
           'Upload your palm photo and get detailed\nlife line, heart line & career insights',
-      gradient: [Color(0xFF693A1B), Color(0xFF0A0A0F)],
+      gradient: [Color(0xFF9B2467), Color(0xFF101217)],
     ),
   ];
 
@@ -90,7 +90,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Skip button
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -104,8 +103,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
               ),
-
-              // Pages
               Expanded(
                 child: PageView.builder(
                   controller: _controller,
@@ -118,8 +115,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   },
                 ),
               ),
-
-              // Page indicator
               Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: SmoothPageIndicator(
@@ -135,29 +130,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
               ),
-
-              // Next / Get Started button
               Padding(
                 padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: ElevatedButton(
-                    onPressed: _nextPage,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.purpleAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(
-                      _currentPage < _pages.length - 1
-                          ? 'Next'
-                          : 'Get Started',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    child: ElevatedButton(
+                      onPressed: _nextPage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        _currentPage < _pages.length - 1 ? 'Next' : 'Get Started',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -177,8 +175,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Spacer(flex: 1),
-
-          // Icon circle
           Container(
             width: 140,
             height: 140,
@@ -196,7 +192,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: page.iconColor.withOpacity(0.15),
+                  color: AppColors.purpleAccent.withOpacity(0.2),
                   blurRadius: 40,
                   spreadRadius: 10,
                 ),
@@ -211,10 +207,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               .animate()
               .fadeIn(duration: 600.ms)
               .scaleXY(begin: 0.7, end: 1.0, duration: 600.ms, curve: Curves.easeOut),
-
           const SizedBox(height: 48),
-
-          // Title
           Text(
             page.title,
             style: const TextStyle(
@@ -228,10 +221,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               .animate()
               .fadeIn(duration: 500.ms, delay: 200.ms)
               .slideY(begin: 0.2, end: 0, duration: 500.ms, delay: 200.ms),
-
           const SizedBox(height: 16),
-
-          // Subtitle
           Text(
             page.subtitle,
             style: const TextStyle(
@@ -243,16 +233,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           )
               .animate()
               .fadeIn(duration: 500.ms, delay: 350.ms),
-
           const SizedBox(height: 24),
-
-          // Description
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
               color: AppColors.surface.withOpacity(0.6),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider.withOpacity(0.5)),
+              border: Border.all(
+                color: AppColors.purpleAccent.withOpacity(0.2),
+              ),
             ),
             child: Text(
               page.description,
@@ -267,7 +256,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               .animate()
               .fadeIn(duration: 500.ms, delay: 500.ms)
               .slideY(begin: 0.1, end: 0, duration: 500.ms, delay: 500.ms),
-
           const Spacer(flex: 2),
         ],
       ),
