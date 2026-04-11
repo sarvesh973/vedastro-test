@@ -24,6 +24,19 @@ jobs:
         with:
           channel: stable
 
+      - name: Generate api_config.dart
+        run: |
+          GEMINI_KEY="${{ secrets.GEMINI_KEY }}"
+          if [ -z "$GEMINI_KEY" ]; then
+            GEMINI_KEY="YOUR_GEMINI_API_KEY_HERE"
+          fi
+          cat > lib/config/api_config.dart <<EOF
+          class ApiConfig {
+            static const String geminiApiKey = '$GEMINI_KEY';
+            static bool get isConfigured => geminiApiKey != 'YOUR_GEMINI_API_KEY_HERE';
+          }
+          EOF
+
       - name: Install dependencies
         run: flutter pub get
 
