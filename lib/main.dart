@@ -125,27 +125,7 @@ class VedAstroApp extends StatelessWidget {
 
   /// Determine the initial screen based on app state
   Widget _getStartScreen() {
-    // Web preview: skip auth, go straight to home
-    if (kIsWeb) {
-      return const HomeScreen();
-    }
-
-    // First time user -> Onboarding
-    if (!StorageService.isOnboardingComplete) {
-      return const OnboardingScreen();
-    }
-
-    // Check Firebase auth state first, then fall back to local
-    if (AuthService.isLoggedIn) {
-      return const HomeScreen();
-    }
-
-    // Not logged in -> Login
-    if (!StorageService.isLoggedIn) {
-      return const LoginScreen();
-    }
-
-    // Local login exists but no Firebase (offline user)
+    // Skip auth — go straight to home for testing
     return const HomeScreen();
   }
 }
