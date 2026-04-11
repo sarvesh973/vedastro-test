@@ -403,7 +403,42 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ).animate().fadeIn(duration: 600.ms, delay: 1100.ms),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  // Made in India
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Made with ',
+                          style: TextStyle(
+                            color: AppColors.textMuted.withOpacity(0.4),
+                            fontSize: 11,
+                          ),
+                        ),
+                        Icon(
+                          Icons.favorite,
+                          color: AppColors.purpleAccent.withOpacity(0.5),
+                          size: 12,
+                        ),
+                        Text(
+                          ' in India',
+                          style: TextStyle(
+                            color: AppColors.textMuted.withOpacity(0.4),
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '\u{1F1EE}\u{1F1F3}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(duration: 600.ms, delay: 1200.ms),
+
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
