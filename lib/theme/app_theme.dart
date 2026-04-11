@@ -2,23 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const Color background = Color(0xFF0A0A0F);
-  static const Color surface = Color(0xFF141420);
-  static const Color surfaceLight = Color(0xFF1E1E2E);
-  static const Color purpleAccent = Color(0xFF7C3AED);
-  static const Color purpleGlow = Color(0xFF9333EA);
-  static const Color purpleLight = Color(0xFFBB86FC);
-  static const Color purpleSoft = Color(0xFF6D28D9);
+  // Melooha-inspired color palette
+  static const Color background = Color(0xFF101217);
+  static const Color surface = Color(0xFF161018);
+  static const Color surfaceLight = Color(0xFF1E1520);
+
+  // Primary: Deep magenta-purple (Melooha brand)
+  static const Color purpleAccent = Color(0xFF7C1C56);
+  static const Color purpleGlow = Color(0xFF9B2467);
+  static const Color purpleLight = Color(0xFFD6A4C3);
+  static const Color purpleSoft = Color(0xFF5C1040);
+
+  // Gradient: magenta → lavender
+  static const Color gradientStart = Color(0xFF7C1C56);
+  static const Color gradientEnd = Color(0xFFD6A4C3);
+
   static const Color gold = Color(0xFFD4A574);
   static const Color goldLight = Color(0xFFE8C9A0);
   static const Color textPrimary = Color(0xFFF1F1F6);
-  static const Color textSecondary = Color(0xFF9CA3AF);
+  static const Color textSecondary = Color(0xFFB3B3B3);
   static const Color textMuted = Color(0xFF6B7280);
-  static const Color divider = Color(0xFF2D2D3F);
-  static const Color userBubble = Color(0xFF7C3AED);
-  static const Color aiBubble = Color(0xFF1A1A2E);
+  static const Color divider = Color(0xFF2D1F2A);
+  static const Color userBubble = Color(0xFF7C1C56);
+  static const Color aiBubble = Color(0xFF1A0F18);
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
+
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [gradientStart, gradientEnd],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 class AppTheme {
@@ -29,7 +43,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.dark(
         primary: AppColors.purpleAccent,
-        secondary: AppColors.gold,
+        secondary: AppColors.purpleLight,
         surface: AppColors.surface,
         error: AppColors.error,
       ),
