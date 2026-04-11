@@ -12,11 +12,40 @@ import 'kundli_screen.dart';
 import 'settings_screen.dart';
 import 'paywall_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  double _overscrollAmount = 0;
+
+  bool _handleOverscroll(ScrollNotification notification) {
+    if (notification is OverscrollNotification && notification.overscroll > 0) {
+      setState(() {
+        _overscrollAmount = (_overscrollAmount + notification.overscroll).clamp(0, 80);
+      });
+    }
+    if (notification is ScrollUpdateNotification) {
+      if (_overscrollAmount > 0 && (notification.scrollDelta ?? 0) < 0) {
+        setState(() {
+          _overscrollAmount = (_overscrollAmount + (notification.scrollDelta ?? 0)).clamp(0, 80);
+        });
+      }
+    }
+    if (notification is ScrollEndNotification) {
+      setState(() {
+        _overscrollAmount = 0;
+      });
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final profile = ref.watch(userProfileProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth > 600;
@@ -27,10 +56,54 @@ class HomeScreen extends ConsumerWidget {
       });
     }
 
+    final revealOpacity = (_overscrollAmount / 60).clamp(0.0, 1.0);
+
     return Scaffold(
       body: StarfieldBackground(
         child: SafeArea(
-          child: SingleChildScrollView(
+          child: Stack(
+            children: [
+              // Hidden "Made in India" behind content
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 16,
+                child: Opacity(
+                  opacity: revealOpacity,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Made with ',
+                        style: TextStyle(
+                          color: AppColors.textMuted.withOpacity(0.6),
+                          fontSize: 12,
+                        ),
+                      ),
+                      Icon(
+                        Icons.favorite,
+                        color: AppColors.purpleAccent.withOpacity(0.7),
+                        size: 13,
+                      ),
+                      Text(
+                        ' in India ',
+                        style: TextStyle(
+                          color: AppColors.textMuted.withOpacity(0.6),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const Text(
+                        '\u{1F1EE}\u{1F1F3}',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Main scrollable content
+              NotificationListener<ScrollNotification>(
+                onNotification: _handleOverscroll,
+                child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: Padding(
               padding: EdgeInsets.symmetric(
@@ -403,45 +476,13 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ).animate().fadeIn(duration: 600.ms, delay: 1100.ms),
 
-                  const SizedBox(height: 16),
-
-                  // Made in India
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Made with ',
-                          style: TextStyle(
-                            color: AppColors.textMuted.withOpacity(0.4),
-                            fontSize: 11,
-                          ),
-                        ),
-                        Icon(
-                          Icons.favorite,
-                          color: AppColors.purpleAccent.withOpacity(0.5),
-                          size: 12,
-                        ),
-                        Text(
-                          ' in India',
-                          style: TextStyle(
-                            color: AppColors.textMuted.withOpacity(0.4),
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '\u{1F1EE}\u{1F1F3}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(duration: 600.ms, delay: 1200.ms),
-
                   const SizedBox(height: 24),
                 ],
               ),
             ),
+          ),
+              ),
+            ],
           ),
         ),
       ),
