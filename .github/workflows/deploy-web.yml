@@ -22,7 +22,6 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
           channel: stable
 
       - name: Install dependencies
@@ -30,8 +29,6 @@ jobs:
 
       - name: Build web
         run: flutter build web --release --base-href /vedastro-test/
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
