@@ -62,51 +62,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       body: StarfieldBackground(
         child: SafeArea(
-          child: Stack(
-            children: [
-              // Hidden "Made in India" behind content
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 16,
-                child: Opacity(
-                  opacity: revealOpacity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Made with ',
-                        style: TextStyle(
-                          color: AppColors.textMuted.withOpacity(0.6),
-                          fontSize: 12,
-                        ),
-                      ),
-                      Icon(
-                        Icons.favorite,
-                        color: AppColors.purpleAccent.withOpacity(0.7),
-                        size: 13,
-                      ),
-                      Text(
-                        ' in India ',
-                        style: TextStyle(
-                          color: AppColors.textMuted.withOpacity(0.6),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const Text(
-                        '\u{1F1EE}\u{1F1F3}',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Main scrollable content
-              NotificationListener<ScrollNotification>(
-                onNotification: _handleOverscroll,
-                child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleOverscroll,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: isWide ? screenWidth * 0.15 : 20,
               ),
@@ -477,13 +437,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ).animate().fadeIn(duration: 600.ms, delay: 1100.ms),
 
+                  const SizedBox(height: 20),
+
+                  // Made in India — hidden until overscroll pull
+                  Opacity(
+                    opacity: revealOpacity,
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Made with ',
+                            style: TextStyle(
+                              color: AppColors.textMuted.withOpacity(0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                          Icon(
+                            Icons.favorite,
+                            color: AppColors.purpleAccent.withOpacity(0.8),
+                            size: 13,
+                          ),
+                          Text(
+                            ' in India ',
+                            style: TextStyle(
+                              color: AppColors.textMuted.withOpacity(0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const Text(
+                            '\u{1F1EE}\u{1F1F3}',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 24),
                 ],
               ),
             ),
-          ),
-              ),
-            ],
           ),
         ),
       ),
