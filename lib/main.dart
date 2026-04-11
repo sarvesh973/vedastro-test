@@ -1,6 +1,7 @@
 // VedAstro AI - Vedic Astrology Platform
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,30 +17,36 @@ import 'screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Initialize Firebase (skip on web — no web config yet)
+  if (!kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   // Initialize persistent storage
   await StorageService.init();
 
   // Sync cloud data if user is logged in
-  _syncCloudData();
+  if (!kIsWeb) {
+    _syncCloudData();
+  }
 
   // Set system UI overlay style for premium dark look
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: AppColors.background,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
+  if (!kIsWeb) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: AppColors.background,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ));
 
-  // Lock to portrait for best experience
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // Lock to portrait for best experience
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
 
   runApp(const ProviderScope(child: VedAstroApp()));
 }
@@ -121,6 +128,14 @@ class VedAstroApp extends StatelessWidget {
     // First time user -> Onboarding
     if (!StorageService.isOnboardingComplete) {
       return const OnboardingScreen();
+    }
+
+    // On web, skip Firebase auth checks
+    if (kIsWeb) {
+      if (StorageService.isLoggedIn) {
+        return const HomeScreen();
+      }
+      return const LoginScreen();
     }
 
     // Check Firebase auth state first, then fall back to local
