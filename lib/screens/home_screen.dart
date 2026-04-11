@@ -23,19 +23,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   double _overscrollAmount = 0;
 
   bool _handleOverscroll(ScrollNotification notification) {
-    if (notification is OverscrollNotification && notification.overscroll > 0) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+
+    final pixels = notification.metrics.pixels;
+    final maxExtent = notification.metrics.maxScrollExtent;
+
+    if (notification is ScrollUpdateNotification && pixels > maxExtent) {
       setState(() {
-        _overscrollAmount = (_overscrollAmount + notification.overscroll).clamp(0, 80);
+        _overscrollAmount = (pixels - maxExtent).clamp(0, 80);
       });
-    }
-    if (notification is ScrollUpdateNotification) {
-      if (_overscrollAmount > 0 && (notification.scrollDelta ?? 0) < 0) {
-        setState(() {
-          _overscrollAmount = (_overscrollAmount + (notification.scrollDelta ?? 0)).clamp(0, 80);
-        });
-      }
-    }
-    if (notification is ScrollEndNotification) {
+    } else if (notification is ScrollEndNotification) {
+      setState(() {
+        _overscrollAmount = 0;
+      });
+    } else if (notification is ScrollUpdateNotification && pixels <= maxExtent && _overscrollAmount > 0) {
       setState(() {
         _overscrollAmount = 0;
       });
