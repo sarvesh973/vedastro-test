@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -19,8 +21,44 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with TickerProviderStateMixin {
   double _overscrollAmount = 0;
+
+  // ─── Celestial animations ─────────────────────────────────────────
+  // Continuous orbit for the small planet around the central logo.
+  late final AnimationController _orbitController;
+  // One-shot shooting star — re-fires every ~15s.
+  late final AnimationController _shootingStarController;
+  Timer? _shootingStarTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _orbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12), // one full orbit
+    )..repeat();
+
+    _shootingStarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    // First shooting star at 15s, then every ~15-20s after
+    _shootingStarTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      _shootingStarController.forward(from: 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _orbitController.dispose();
+    _shootingStarController.dispose();
+    _shootingStarTimer?.cancel();
+    super.dispose();
+  }
 
   bool _handleOverscroll(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.vertical) return false;
@@ -61,7 +99,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       body: StarfieldBackground(
-        child: SafeArea(
+        child: Stack(
+          children: [
+            SafeArea(
           child: NotificationListener<ScrollNotification>(
             onNotification: _handleOverscroll,
             child: SingleChildScrollView(
@@ -132,26 +172,84 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Center(
                     child: Column(
                       children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                AppColors.purpleAccent.withOpacity(0.3),
-                                AppColors.purpleAccent.withOpacity(0.05),
-                              ],
-                            ),
-                            border: Border.all(
-                              color: AppColors.purpleAccent.withOpacity(0.4),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.auto_awesome,
-                            color: AppColors.goldLight,
-                            size: 36,
+                        // Central logo with orbiting planet
+                        SizedBox(
+                          width: 180,
+                          height: 180,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Subtle dashed orbit ring
+                              CustomPaint(
+                                size: const Size(140, 140),
+                                painter: _OrbitRingPainter(
+                                  color: AppColors.purpleLight.withOpacity(0.18),
+                                ),
+                              ),
+                              // Central logo (the "sun")
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: RadialGradient(
+                                    colors: [
+                                      AppColors.purpleAccent.withOpacity(0.35),
+                                      AppColors.purpleAccent.withOpacity(0.05),
+                                    ],
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.purpleAccent.withOpacity(0.4),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.purpleAccent.withOpacity(0.4),
+                                      blurRadius: 24,
+                                      spreadRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.auto_awesome,
+                                  color: AppColors.goldLight,
+                                  size: 36,
+                                ),
+                              ),
+                              // Orbiting planet
+                              AnimatedBuilder(
+                                animation: _orbitController,
+                                builder: (context, _) {
+                                  final angle = _orbitController.value * 2 * math.pi;
+                                  const orbitRadius = 70.0;
+                                  final dx = math.cos(angle) * orbitRadius;
+                                  final dy = math.sin(angle) * orbitRadius;
+                                  return Transform.translate(
+                                    offset: Offset(dx, dy),
+                                    child: Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            AppColors.goldLight,
+                                            AppColors.purpleLight.withOpacity(0.8),
+                                          ],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.goldLight.withOpacity(0.6),
+                                            blurRadius: 12,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         )
                             .animate()
@@ -480,6 +578,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           ),
+            ),
+            // Shooting star — fires every 15s, animates diagonally
+            // across the screen and fades out.
+            AnimatedBuilder(
+              animation: _shootingStarController,
+              builder: (context, _) {
+                if (_shootingStarController.value == 0) return const SizedBox.shrink();
+                final w = MediaQuery.of(context).size.width;
+                final h = MediaQuery.of(context).size.height;
+                final t = _shootingStarController.value;
+                // Travel from top-right to bottom-left, slightly arced
+                final startX = w * 0.85;
+                final startY = h * 0.05;
+                final endX = w * 0.15;
+                final endY = h * 0.55;
+                final x = startX + (endX - startX) * t;
+                final y = startY + (endY - startY) * t;
+                // Fade in fast, fade out slower
+                final opacity = t < 0.2
+                    ? (t / 0.2)
+                    : (1 - ((t - 0.2) / 0.8)).clamp(0.0, 1.0);
+                return Positioned(
+                  left: x,
+                  top: y,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: opacity,
+                      child: Transform.rotate(
+                        angle: math.atan2(endY - startY, endX - startX),
+                        child: Container(
+                          width: 90,
+                          height: 2.5,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white,
+                                AppColors.goldLight.withOpacity(0.8),
+                                AppColors.purpleLight.withOpacity(0),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.goldLight.withOpacity(0.7),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -576,4 +731,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       transitionDuration: const Duration(milliseconds: 400),
     );
   }
+}
+
+/// Subtle dashed ring drawn behind the orbiting planet — gives the
+/// orbit visual structure without being heavy.
+class _OrbitRingPainter extends CustomPainter {
+  final Color color;
+  const _OrbitRingPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    final radius = size.width / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // Dashed circle — 60 segments
+    const dashCount = 60;
+    const sweep = 2 * math.pi / dashCount;
+    const dashFraction = 0.55; // dash : gap = 55:45
+
+    for (int i = 0; i < dashCount; i++) {
+      final start = i * sweep;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep * dashFraction,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _OrbitRingPainter old) => old.color != color;
 }
