@@ -592,29 +592,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           ),
             ),
-            // Half-visible Saturn — bigger than the orbiting planet,
-            // sits half off-screen on the right edge, slowly spins on its
-            // own axis. Position alternates by hash of current minute so
-            // it occasionally appears on the left instead.
+            // Half-visible Saturn — sits half off-screen on the right edge.
+            // The PLANET BODY rotates on its axis (counter-clockwise);
+            // the RINGS stay fixed (real planets work this way — rings are
+            // a separate orbital plane).
             Positioned(
-              right: -100,                         // ~half off-screen
-              top: MediaQuery.of(context).size.height * 0.30,
+              right: -90,                          // ~half off-screen
+              top: MediaQuery.of(context).size.height * 0.32,
               child: IgnorePointer(
                 child: AnimatedBuilder(
                   animation: _saturnSpinController,
                   builder: (context, _) {
-                    return Transform.rotate(
-                      angle: _saturnSpinController.value * 2 * math.pi,
-                      child: CustomPaint(
-                        size: const Size(220, 220),
-                        painter: _SaturnPainter(
-                          planetGradient: const [
-                            Color(0xFFE8C9A0),  // gold
-                            Color(0xFFB87333),  // bronze
-                            Color(0xFF6B3410),  // dark amber
-                          ],
-                          ringColor: const Color(0xFFD6A4C3),  // lavender
-                        ),
+                    return CustomPaint(
+                      size: const Size(180, 180),  // smaller than before
+                      painter: _SaturnPainter(
+                        // Counter-clockwise spin → negate the angle.
+                        // Only applied to the planet body, not the rings.
+                        spinAngle: -_saturnSpinController.value * 2 * math.pi,
+                        // Premium dark reddish — Mars-like but deeper.
+                        planetColors: const [
+                          Color(0xFF7A2E1F),  // warm rust highlight
+                          Color(0xFF4A1A10),  // mid red-brown
+                          Color(0xFF1F0A05),  // near-black core
+                        ],
+                        ringColor: const Color(0xFFC9A188),  // dusty rose-gold
                       ),
                     );
                   },
@@ -833,77 +834,144 @@ class _OrbitRingPainter extends CustomPainter {
   bool shouldRepaint(covariant _OrbitRingPainter old) => old.color != color;
 }
 
-/// Saturn — drawn with CustomPainter so it can spin smoothly without
-/// needing an asset. Sphere with banded gradient + tilted ring system.
+/// Saturn — premium dark-reddish planet that spins on its axis while the
+/// rings stay fixed (real planetary mechanics — rings are an independent
+/// orbital plane). All drawn with CustomPainter, no assets needed.
 class _SaturnPainter extends CustomPainter {
-  final List<Color> planetGradient;
+  /// Rotation of the planet body only (rings are static).
+  final double spinAngle;
+  /// 3 colors for the planet sphere — highlight → mid → shadow.
+  final List<Color> planetColors;
+  /// Base ring color (alpha applied per band).
   final Color ringColor;
 
   const _SaturnPainter({
-    required this.planetGradient,
+    required this.spinAngle,
+    required this.planetColors,
     required this.ringColor,
   });
+
+  static const double _ringTilt = -0.32; // ~-18° (classic Saturn tilt)
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final planetRadius = size.width * 0.28; // ~28% of canvas
-    final ringOuter = size.width * 0.48;    // outer ring extent
-    final ringInner = planetRadius * 1.25;  // gap between planet & ring
+    final planetRadius = size.width * 0.30;
+    final ringOuter = size.width * 0.48;
+    final ringInner = planetRadius * 1.18;
 
-    // ─── Tilt the ring system (~18° tilt looks most "Saturny") ───
+    // ─── 1. BACK half of rings (behind planet) — STATIC, no spin ───
     canvas.save();
     canvas.translate(center.dx, center.dy);
-    canvas.rotate(-0.32); // ~-18° tilt
-
-    // Back half of ring (drawn first so planet covers part of it)
+    canvas.rotate(_ringTilt);
     _drawRingArc(canvas, ringInner, ringOuter, math.pi, math.pi);
     canvas.restore();
 
-    // ─── Planet sphere with radial gradient ───
+    // ─── 2. PLANET sphere — spins with spinAngle ───
+    canvas.save();
+    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: planetRadius)));
+
+    // Base sphere — radial gradient gives 3D shading
     final planetRect = Rect.fromCircle(center: center, radius: planetRadius);
     final planetPaint = Paint()
       ..shader = RadialGradient(
-        center: const Alignment(-0.3, -0.4), // light source top-left
-        radius: 0.95,
-        colors: planetGradient,
+        center: const Alignment(-0.35, -0.4), // light source top-left
+        radius: 1.0,
+        stops: const [0.0, 0.55, 1.0],
+        colors: planetColors,
       ).createShader(planetRect);
-    canvas.drawCircle(center, planetRadius, planetPaint);
+    canvas.drawRect(planetRect, planetPaint);
 
-    // Subtle horizontal bands (Saturn-like atmosphere)
+    // Surface "texture" — rotate the surface markings (NOT the rings).
+    // We translate to center, rotate by spinAngle, then draw markings
+    // in local coords. The clipPath above keeps everything inside the sphere.
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(spinAngle);
+
+    // Subtle dark spots / storms — gives "real planet" feel as it rotates
+    final spotPaint = Paint()
+      ..color = Colors.black.withOpacity(0.22)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    final spots = [
+      [-planetRadius * 0.30, -planetRadius * 0.10, planetRadius * 0.18],
+      [planetRadius * 0.20, planetRadius * 0.05, planetRadius * 0.13],
+      [-planetRadius * 0.05, planetRadius * 0.40, planetRadius * 0.09],
+      [planetRadius * 0.45, -planetRadius * 0.25, planetRadius * 0.08],
+      [-planetRadius * 0.50, planetRadius * 0.20, planetRadius * 0.10],
+    ];
+    for (final s in spots) {
+      canvas.drawCircle(Offset(s[0], s[1]), s[2], spotPaint);
+    }
+
+    // Atmospheric bands — drawn in rotating frame so they wrap around
     final bandPaint = Paint()
-      ..color = Colors.black.withOpacity(0.08)
+      ..color = Colors.black.withOpacity(0.10)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    for (int i = 1; i <= 4; i++) {
-      final y = center.dy - planetRadius * 0.6 + (planetRadius * 0.3 * i);
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    for (int i = -3; i <= 3; i++) {
+      final y = i * planetRadius * 0.22;
       canvas.drawLine(
-        Offset(center.dx - planetRadius * 0.95, y),
-        Offset(center.dx + planetRadius * 0.95, y),
+        Offset(-planetRadius * 0.95, y),
+        Offset(planetRadius * 0.95, y),
         bandPaint,
       );
     }
 
-    // Soft outer glow around the planet
+    canvas.restore(); // restores after clipPath + spin
+
+    // ─── 3. SHADING OVERLAY — limb darkening (sphere edge appears darker) ───
+    // Drawn AFTER spin restore so it doesn't rotate. This is key for
+    // making the planet look 3D + premium instead of flat.
+    final limbPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.35, -0.4),
+        radius: 1.1,
+        stops: const [0.55, 1.0],
+        colors: [
+          Colors.transparent,
+          Colors.black.withOpacity(0.55),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: planetRadius));
+    canvas.drawCircle(center, planetRadius, limbPaint);
+
+    // Specular highlight (small bright spot top-left = light source)
+    final specPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white.withOpacity(0.18),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(
+        center: Offset(center.dx - planetRadius * 0.35, center.dy - planetRadius * 0.4),
+        radius: planetRadius * 0.5,
+      ));
+    canvas.drawCircle(
+      Offset(center.dx - planetRadius * 0.35, center.dy - planetRadius * 0.4),
+      planetRadius * 0.5,
+      specPaint,
+    );
+
+    // ─── 4. Soft outer glow ───
     final glowPaint = Paint()
-      ..color = planetGradient.first.withOpacity(0.18)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 16);
+      ..color = planetColors.first.withOpacity(0.20)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 18);
     canvas.drawCircle(center, planetRadius, glowPaint);
 
-    // Front half of ring (covers the planet on the visible side)
+    // ─── 5. FRONT half of rings (in front of planet) — STATIC ───
     canvas.save();
     canvas.translate(center.dx, center.dy);
-    canvas.rotate(-0.32);
+    canvas.rotate(_ringTilt);
     _drawRingArc(canvas, ringInner, ringOuter, 0, math.pi);
     canvas.restore();
   }
 
   void _drawRingArc(Canvas canvas, double inner, double outer, double startAngle, double sweep) {
-    // Three concentric ring bands with thin gaps between
+    // Three concentric ring bands — denser near Cassini gap pattern
     final bands = [
-      [inner, inner + (outer - inner) * 0.30, ringColor.withOpacity(0.55)],
-      [inner + (outer - inner) * 0.35, inner + (outer - inner) * 0.65, ringColor.withOpacity(0.40)],
-      [inner + (outer - inner) * 0.70, outer, ringColor.withOpacity(0.30)],
+      [inner, inner + (outer - inner) * 0.28, ringColor.withOpacity(0.55)],
+      [inner + (outer - inner) * 0.34, inner + (outer - inner) * 0.62, ringColor.withOpacity(0.42)],
+      [inner + (outer - inner) * 0.70, outer, ringColor.withOpacity(0.32)],
     ];
 
     for (final band in bands) {
@@ -915,13 +983,13 @@ class _SaturnPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = (r2 - r1);
 
-      // Draw ring as a flattened ellipse to give 3D perspective
+      // Squashed ellipse for 3D perspective (~22° viewing angle)
       final path = Path()
         ..addArc(
           Rect.fromCenter(
             center: Offset.zero,
             width: ((r1 + r2) / 2) * 2,
-            height: ((r1 + r2) / 2) * 0.45, // squashed vertically = perspective
+            height: ((r1 + r2) / 2) * 0.40,
           ),
           startAngle,
           sweep,
@@ -932,5 +1000,7 @@ class _SaturnPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SaturnPainter old) =>
-      old.ringColor != ringColor || old.planetGradient != planetGradient;
+      old.spinAngle != spinAngle ||
+      old.ringColor != ringColor ||
+      old.planetColors != planetColors;
 }
