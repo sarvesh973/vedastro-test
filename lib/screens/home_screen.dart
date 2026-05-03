@@ -28,9 +28,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ─── Celestial animations ─────────────────────────────────────────
   // Continuous orbit for the small planet around the central logo.
   late final AnimationController _orbitController;
-  // One-shot shooting star — re-fires every ~15s.
+  // Saturn spin — slow rotation on its own axis.
+  late final AnimationController _saturnSpinController;
+  // One-shot shooting star — re-fires every 10s.
   late final AnimationController _shootingStarController;
   Timer? _shootingStarTimer;
+  final _random = math.Random();
+  // Picks a random direction each time the shooting star fires.
+  int _shootingStarDirection = 0; // 0..3
 
   @override
   void initState() {
@@ -40,14 +45,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       duration: const Duration(seconds: 12), // one full orbit
     )..repeat();
 
+    // Saturn spins on its axis — full rotation every 30s (slow & majestic)
+    _saturnSpinController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 30),
+    )..repeat();
+
     _shootingStarController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
 
-    // First shooting star at 15s, then every ~15-20s after
-    _shootingStarTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // First shooting star at 10s, then every 10s after — random direction
+    _shootingStarTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted) return;
+      setState(() => _shootingStarDirection = _random.nextInt(4));
       _shootingStarController.forward(from: 0);
     });
   }
@@ -55,6 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     _orbitController.dispose();
+    _saturnSpinController.dispose();
     _shootingStarController.dispose();
     _shootingStarTimer?.cancel();
     super.dispose();
@@ -579,8 +592,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           ),
             ),
-            // Shooting star — fires every 15s, animates diagonally
-            // across the screen and fades out.
+            // Half-visible Saturn — bigger than the orbiting planet,
+            // sits half off-screen on the right edge, slowly spins on its
+            // own axis. Position alternates by hash of current minute so
+            // it occasionally appears on the left instead.
+            Positioned(
+              right: -100,                         // ~half off-screen
+              top: MediaQuery.of(context).size.height * 0.30,
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _saturnSpinController,
+                  builder: (context, _) {
+                    return Transform.rotate(
+                      angle: _saturnSpinController.value * 2 * math.pi,
+                      child: CustomPaint(
+                        size: const Size(220, 220),
+                        painter: _SaturnPainter(
+                          planetGradient: const [
+                            Color(0xFFE8C9A0),  // gold
+                            Color(0xFFB87333),  // bronze
+                            Color(0xFF6B3410),  // dark amber
+                          ],
+                          ringColor: const Color(0xFFD6A4C3),  // lavender
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // Shooting star — fires every 10s from a random direction.
+            // 4 possible trajectories rotate so it doesn't feel repetitive.
             AnimatedBuilder(
               animation: _shootingStarController,
               builder: (context, _) {
@@ -588,11 +631,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 final w = MediaQuery.of(context).size.width;
                 final h = MediaQuery.of(context).size.height;
                 final t = _shootingStarController.value;
-                // Travel from top-right to bottom-left, slightly arced
-                final startX = w * 0.85;
-                final startY = h * 0.05;
-                final endX = w * 0.15;
-                final endY = h * 0.55;
+
+                // 4 directions: TR→BL, TL→BR, top→bottom-left, top→bottom-right
+                late final double startX, startY, endX, endY;
+                switch (_shootingStarDirection) {
+                  case 0: // top-right → bottom-left (original)
+                    startX = w * 0.85; startY = h * 0.05;
+                    endX = w * 0.15; endY = h * 0.55;
+                    break;
+                  case 1: // top-left → bottom-right
+                    startX = w * 0.15; startY = h * 0.05;
+                    endX = w * 0.85; endY = h * 0.55;
+                    break;
+                  case 2: // top-center → bottom-left
+                    startX = w * 0.55; startY = -20;
+                    endX = w * 0.05; endY = h * 0.45;
+                    break;
+                  case 3: // top-right → middle-left (flatter)
+                    startX = w * 0.95; startY = h * 0.15;
+                    endX = w * 0.05; endY = h * 0.30;
+                    break;
+                  default:
+                    startX = w * 0.8; startY = 0;
+                    endX = w * 0.2; endY = h * 0.5;
+                }
+
                 final x = startX + (endX - startX) * t;
                 final y = startY + (endY - startY) * t;
                 // Fade in fast, fade out slower
@@ -768,4 +831,106 @@ class _OrbitRingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _OrbitRingPainter old) => old.color != color;
+}
+
+/// Saturn — drawn with CustomPainter so it can spin smoothly without
+/// needing an asset. Sphere with banded gradient + tilted ring system.
+class _SaturnPainter extends CustomPainter {
+  final List<Color> planetGradient;
+  final Color ringColor;
+
+  const _SaturnPainter({
+    required this.planetGradient,
+    required this.ringColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final planetRadius = size.width * 0.28; // ~28% of canvas
+    final ringOuter = size.width * 0.48;    // outer ring extent
+    final ringInner = planetRadius * 1.25;  // gap between planet & ring
+
+    // ─── Tilt the ring system (~18° tilt looks most "Saturny") ───
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(-0.32); // ~-18° tilt
+
+    // Back half of ring (drawn first so planet covers part of it)
+    _drawRingArc(canvas, ringInner, ringOuter, math.pi, math.pi);
+    canvas.restore();
+
+    // ─── Planet sphere with radial gradient ───
+    final planetRect = Rect.fromCircle(center: center, radius: planetRadius);
+    final planetPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.3, -0.4), // light source top-left
+        radius: 0.95,
+        colors: planetGradient,
+      ).createShader(planetRect);
+    canvas.drawCircle(center, planetRadius, planetPaint);
+
+    // Subtle horizontal bands (Saturn-like atmosphere)
+    final bandPaint = Paint()
+      ..color = Colors.black.withOpacity(0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    for (int i = 1; i <= 4; i++) {
+      final y = center.dy - planetRadius * 0.6 + (planetRadius * 0.3 * i);
+      canvas.drawLine(
+        Offset(center.dx - planetRadius * 0.95, y),
+        Offset(center.dx + planetRadius * 0.95, y),
+        bandPaint,
+      );
+    }
+
+    // Soft outer glow around the planet
+    final glowPaint = Paint()
+      ..color = planetGradient.first.withOpacity(0.18)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 16);
+    canvas.drawCircle(center, planetRadius, glowPaint);
+
+    // Front half of ring (covers the planet on the visible side)
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(-0.32);
+    _drawRingArc(canvas, ringInner, ringOuter, 0, math.pi);
+    canvas.restore();
+  }
+
+  void _drawRingArc(Canvas canvas, double inner, double outer, double startAngle, double sweep) {
+    // Three concentric ring bands with thin gaps between
+    final bands = [
+      [inner, inner + (outer - inner) * 0.30, ringColor.withOpacity(0.55)],
+      [inner + (outer - inner) * 0.35, inner + (outer - inner) * 0.65, ringColor.withOpacity(0.40)],
+      [inner + (outer - inner) * 0.70, outer, ringColor.withOpacity(0.30)],
+    ];
+
+    for (final band in bands) {
+      final r1 = band[0] as double;
+      final r2 = band[1] as double;
+      final color = band[2] as Color;
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (r2 - r1);
+
+      // Draw ring as a flattened ellipse to give 3D perspective
+      final path = Path()
+        ..addArc(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: ((r1 + r2) / 2) * 2,
+            height: ((r1 + r2) / 2) * 0.45, // squashed vertically = perspective
+          ),
+          startAngle,
+          sweep,
+        );
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SaturnPainter old) =>
+      old.ringColor != ringColor || old.planetGradient != planetGradient;
 }
